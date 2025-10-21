@@ -1,0 +1,16 @@
+
+ 现在我们把整个流程串起来，看看一次查询是怎么发生的：  去看一下数据表关系，主要是三个表   collections   embeddings    embedding_metadata  完整流通理解了就行了
+
+   1. 你的代码: collection.query(query_embeddings=[...], n_results=5)
+   2. ChromaDB 内部:
+      a.  SQLite 查询: ChromaDB 首先查询 SQLite 的 collections 和 segments 表，找到这个 collection
+  拥有哪些活跃的 segment_id。
+      b.  加载索引: 对于每一个 segment_id，ChromaDB 去文件系统加载对应的 HNSW 索引文件到内存中。
+      c.  ANN 搜索: 在内存中的 HNSW
+  图结构上执行高效的近似最近邻搜索。这个搜索返回的是匹配向量在二进制文件中的内部位置或偏移量。
+      d.  ID 映射: ChromaDB 根据这些内部位置，找到它们对应的用户 ID
+  (embedding_id)。这个映射关系也可能存储在段文件或 embeddings 表中。
+      e.  获取元数据: 拿到了 embedding_id 列表（例如 ["doc1_chunk1", "docX_chunkY", ...]) 之后，ChromaDB
+  回到 SQLite，在 embedding_metadata 表中 WHERE string_id IN (...)
+  来捞取这些向量对应的元数据（比如你存的原始文本）。
+      f.  返回结果: 将向量的 ID、距离、元数据等信息组合起来，返回给用户。
