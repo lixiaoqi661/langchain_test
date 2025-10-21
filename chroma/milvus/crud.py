@@ -98,11 +98,63 @@ def test_query():
         limit=5
     )
     print(res)
-    pass
 
 def test_search():
-    client.search(
+    dim=128
+    query_vector = np.random.rand(dim).tolist()
+    results=client.search(
         collection_name="demo_collection01",
-
+        data=[query_vector],
+        limit=5,
+        filter='metadata["source"]=="weibo"',
+        output_fields=["*"]
     )
-    pass
+    for hits in results:
+        for hit in hits:
+            print(f"ID: {hit['id']},\ndistance:{hit['distance']}\ntext:{hit['entity'].get('text')} \nMetadata: {hit['entity'].get('metadata')}\n")
+    return results
+
+
+def test_view_all_data_with_query():
+    collection_name="demo_collection"
+    """使用 query 查询所有数据（推荐）"""
+    print(f"\n{'=' * 60}")
+    print(f"方法1: 使用 query() 查看所有数据")
+    print(f"{'=' * 60}")
+
+    # # 获取集合统计信息
+    # stats = client.conn(collection_name)
+    # total_count = stats['row_count']
+    # print(f"总数据量: {total_count}")
+
+    # 查询所有数据（不带过滤条件）
+    results = client.query(
+        collection_name=collection_name,
+        filter="",  # 空过滤条件 = 查询所有
+        output_fields=["*"],  # 返回所有字段，或指定字段列表
+        limit=16384  # 单次查询的最大数量（Milvus 默认限制）
+    )
+
+    print(f"\n查询到 {len(results)} 条数据:")
+    for i, result in enumerate(results[:5]):  # 只显示前 5 条
+        print(f"\n记录 {i + 1}:")
+        for key, value in result.items():
+            if key == "vector":
+                print(f"  {key}: [{value[0]:.4f}, {value[1]:.4f}, ... (dim={len(value)})]")
+            else:
+                print(f"  {key}: {value}")
+
+    if len(results) > 5:
+        print(f"\n... 还有 {len(results) - 5} 条数据")
+
+    return results
+
+def test_list_collections():
+    """列出所有集合"""
+    collections = client.list_collections()
+
+    print(f"\nAll Collections: {collections}")
+def test_get_by_ids():
+    ids=[]
+
+
